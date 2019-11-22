@@ -1,0 +1,11 @@
+/.metadata/
+/readapp/
+/Docs/
+*.o*
+*.ko
+*.symvers
+/RemoteSystemsTempFiles/
+/.tmp_versions/
+*.mk
+*.cmd
+*.mod.*

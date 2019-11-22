@@ -1,0 +1,82 @@
+/*
+ ============================================================================
+ Nom         : driverUSB.c
+ Author      : Samuel Pesant et Mathieu Fournier-Desrochers
+ Date 	     : 22-10-2019
+ Description : Fonctions du pilote série
+ ============================================================================
+ */
+
+#include "driverUSB.h"
+
+
+MODULE_AUTHOR("Mathieu Fournier-Desrochers et Samuel Pesant");
+MODULE_LICENSE("Dual BSD/GPL");
+
+int pilote_USB_probe(struct usb_interface *intf, const struct usb_device_id *id){
+	printk(KERN_ALERT"ELE784 -> probe \n\r");
+	return 0;
+};
+
+static void pilote_USB_disconnect(struct usb_interface *intf){
+	printk(KERN_ALERT "ELE784 -> disconnect \n\r");
+};
+
+
+int pilote_USB_open(struct inode *inode,struct file *filp){
+	
+	struct usb_interface *intf;
+	int subminor;
+	
+	printk(KERN_ALERT "ELE784 -> open \n\r");
+	
+	subminor = iminor(inode);
+
+	intf = usb_find_interface(&myUSBdriver, subminor);
+	if(!intf){
+		printk(KERN_WARNING "ELE784 -> open: ne peux ouvrir le peripherique";
+		return -ENODEV;	
+	}
+
+	file->private_data = intf;
+	return 0;
+};
+
+ssize_t pilote_USB_read(struct file *filp, char *buff, size_t count, loff_t *f_pos){
+	printk(KERN_ALERT "ELE784 -> read \n\r");
+	return 0;
+};
+
+long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
+	
+	switch(cmd){
+	
+	case IOCTL_GET:
+		printk(KERN_ALERT"ELE784 -> IOCTL_GET \n\r");
+		break;
+	case IOCTL_SET:
+		printk(KERN_ALERT"ELE784 -> IOCTL_SET \n\r");
+		break;
+	case IOCTL_STREAMON:
+		printk(KERN_ALERT"ELE784 -> IOCTL_STREAMON \n\r");
+		break;
+	case IOCTL_STREAMOFF:
+		printk(KERN_ALERT"ELE784 -> IOCTL_STREAMOFF \n\r");
+		break;
+	case IOCTL_GRAB:
+		printk(KERN_ALERT"ELE784 -> IOCTL_GRAB \n\r");
+		break;
+	case IOCTL_PANTILT:
+		printk(KERN_ALERT"ELE784 -> IOCTL_PANTILT \n\r");
+		break;
+	case IOCTL_PANTILT_RESEST:
+		printk(KERN_ALERT"ELE784 -> IOCTL_PANTILT_RESEST \n\r");
+		break;
+	default:
+		return -ENOTTY;
+	}
+	printk(KERN_ALERT"ELE784 -> ioctl \n\r");
+	return 0;
+};
+
+module_usb_driver(myUSBdriver);

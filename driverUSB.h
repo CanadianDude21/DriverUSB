@@ -33,10 +33,10 @@
 #define DEV_MINOR 0
 
 #define USB_VENDOR_ID	0x046d 
-#define USB_PRODUCT_ID 	0x08cc
+#define USB_PRODUCT_ID 	0x0994
 
 typedef struct{
-	struct usb_device dev;
+	struct usb_device* dev;
 }USBperso;
 
 int pilote_USB_probe(struct usb_interface *intf, const struct usb_device_id *id);
@@ -55,14 +55,14 @@ struct file_operations monModule_fops = {
 struct usb_class_driver usbClass = {
 	.name = "Camera %d",
 	.fops = &monModule_fops,
-	.minor_base = DEV_MINOR;
+	.minor_base = DEV_MINOR
 };
 
 struct usb_device_id MyIdTable[]={
 	{USB_DEVICE(USB_VENDOR_ID,USB_PRODUCT_ID)},
 	{}
 };
-MODULE_DEVICE_TABLE(usb,MyIdTable);
+
 
 struct usb_driver myUSBdriver ={
 	.name = "myUSBdriver",
@@ -70,3 +70,4 @@ struct usb_driver myUSBdriver ={
 	.disconnect = pilote_USB_disconnect,
 	.id_table = MyIdTable,
 };
+MODULE_DEVICE_TABLE(usb,MyIdTable);

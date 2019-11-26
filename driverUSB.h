@@ -26,6 +26,7 @@
  
 #include <linux/usb.h> 
 #include "ioctlcmd.h"
+#include "usbvideo.h"
 
 
 #define DEV_MAJOR 250
@@ -33,6 +34,10 @@
 
 #define USB_VENDOR_ID	0x046d 
 #define USB_PRODUCT_ID 	0x08cc
+
+typedef struct{
+	struct usb_device dev;
+}USBperso;
 
 int pilote_USB_probe(struct usb_interface *intf, const struct usb_device_id *id);
 static void pilote_USB_disconnect(struct usb_interface *intf);

@@ -13,10 +13,14 @@
 MODULE_AUTHOR("Mathieu Fournier-Desrochers et Samuel Pesant");
 MODULE_LICENSE("Dual BSD/GPL");
 
+USBperso device;
+
 int pilote_USB_probe(struct usb_interface *intf, const struct usb_device_id *id){
 	struct usb_host_interface *iface_desc;
 	struct usb_device *dev = interface_to_usbdev(intf);
-	struct 	
+	device.dev = usb_get_dev(dev);
+
+	iface_desc = intf->cur_altsetting;
 	printk(KERN_ALERT"ELE784 -> probe \n\r");
 	return 0;
 };

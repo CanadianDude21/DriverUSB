@@ -22,6 +22,7 @@ int pilote_USB_probe(struct usb_interface *intf, const struct usb_device_id *id)
 
 	device = kmalloc(sizeof(USBperso),GFP_KERNEL);
 	device->dev = usb_get_dev(dev);
+	device->intf = intf;
 	iface_desc = intf->cur_altsetting;
 	if(iface_desc->desc.bInterfaceClass == CC_VIDEO && iface_desc->desc.bInterfaceSubClass == SC_VIDEOSTREAMING && iface_desc->desc.bInterfaceNumber == 1){
 		usb_set_intfdata(intf,device);
@@ -46,20 +47,14 @@ static void pilote_USB_disconnect(struct usb_interface *intf){
 
 int pilote_USB_open(struct inode *inode, struct file *filp){
 	
-	struct usb_interface *intf;
-	int subminor;
-	
+
+
+	filp->private_data = device;
 	printk(KERN_ALERT "ELE784 -> open \n\r");
 	
-	subminor = iminor(inode);
 
-	intf = usb_find_interface(&myUSBdriver, subminor);
-	if(!intf){
-		printk(KERN_WARNING "ELE784 -> open: ne peux ouvrir le peripherique");
-		return -ENODEV;	
-	}
 
-	filp->private_data = intf;
+	
 	return 0;
 };
 

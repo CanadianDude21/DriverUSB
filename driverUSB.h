@@ -37,6 +37,7 @@
 
 typedef struct{
 	struct usb_device* dev;
+	struct usb_interface *intf;
 }USBperso;
 
 int pilote_USB_probe(struct usb_interface *intf, const struct usb_device_id *id);

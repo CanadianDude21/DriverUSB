@@ -23,10 +23,18 @@
 #include <linux/errno.h> 
 #include <linux/syscalls.h>
 #include <linux/stat.h>
+#include <linux/fcntl.h>
+#include <linux/wait.h>
+#include <asm/atomic.h>
+#include <asm/uaccess.h>
+
  
-#include <linux/usb.h> 
+#include <linux/usb.h>
+#include <linux/completion.h>
+#include <linux/usb/video.h>
 #include "ioctlcmd.h"
 #include "usbvideo.h"
+
 
 
 #define DEV_MAJOR 250
@@ -44,6 +52,7 @@ static void pilote_USB_disconnect(struct usb_interface *intf);
 int pilote_USB_open(struct inode *inode,struct file *filp);
 ssize_t pilote_USB_read(struct file *filp, char *buff, size_t count, loff_t *f_pos);
 long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+static void complete_callback(struct urb *urb);
 
 struct file_operations monModule_fops = {
 	.owner   = THIS_MODULE,

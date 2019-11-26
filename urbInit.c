@@ -8,14 +8,14 @@ size = myPacketSize * nbPackets;
 nbUrbs = 5;
 
 for (i = 0; i < nbUrbs; ++i) {
-  usb_free_urb(/** ... */); // Pour être certain (Créer urb dynamiquement)
-  myUrb[i] = usb_alloc_urb(/** ... */); //Il y aura un kmalloc
+  usb_free_urb(/** ... */); // Pour être certain
+  myUrb[i] = usb_alloc_urb(/** ... */);
   if (myUrb[i] == NULL) {
     //printk(KERN_WARNING "");		
     return -ENOMEM;
   }
 
-  myUrb[i]->transfer_buffer = usb_buffer_alloc(/** ... */);//Allocation dynamique du tampon
+  myUrb[i]->transfer_buffer = usb_buffer_alloc(/** ... */);
 
   if (myUrb[i]->transfer_buffer == NULL) {
     //printk(KERN_WARNING "");		

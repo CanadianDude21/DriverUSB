@@ -43,9 +43,15 @@
 #define USB_VENDOR_ID	0x046d 
 #define USB_PRODUCT_ID 	0x0994
 
+#define LENGTH 42666
+
 typedef struct{
 	struct usb_device* dev;
 	struct usb_interface *intf;
+	unsigned int myStatus;
+	unsigned int myLength;
+	unsigned int myLengthUsed;
+	char *myData;
 }USBperso;
 
 int pilote_USB_probe(struct usb_interface *intf, const struct usb_device_id *id);
@@ -63,7 +69,7 @@ struct file_operations monModule_fops = {
 };
 
 struct usb_class_driver usbClass = {
-	.name = "Camera %d",
+	.name = "Camera%d",
 	.fops = &monModule_fops,
 	.minor_base = DEV_MINOR
 };

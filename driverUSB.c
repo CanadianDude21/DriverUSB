@@ -19,29 +19,44 @@ int pilote_USB_probe(struct usb_interface *intf, const struct usb_device_id *id)
 	int retval;
 	struct usb_host_interface *iface_desc;
 	struct usb_device *dev = interface_to_usbdev(intf);
-
-	device = kmalloc(sizeof(USBperso),GFP_KERNEL);
-	device->dev = usb_get_dev(dev);
-	device->intf = intf;
 	iface_desc = intf->cur_altsetting;
+
 	if(iface_desc->desc.bInterfaceClass == CC_VIDEO && iface_desc->desc.bInterfaceSubClass == SC_VIDEOSTREAMING && iface_desc->desc.bInterfaceNumber == 1){
+		device = kmalloc(sizeof(USBperso),GFP_ATOMIC);
+		device->myStatus = 0;
+		device->myLength = LENGTH;
+		device->myLengthUsed = 0;
+		device->myData = kmalloc(sizeof(char)*device->myLength,GFP_ATOMIC);
+		device->dev = usb_get_dev(dev);
+		device->intf = intf;
 		usb_set_intfdata(intf,device);
 		usb_register_dev(intf, &usbClass);
 		retval = usb_set_interface(device->dev, iface_desc->desc.bInterfaceNumber, 4);
+		printk(KERN_ALERT"ELE784 -> probe \n\r");
 	}
+/*
 	if(iface_desc->desc.bInterfaceClass == CC_VIDEO && iface_desc->desc.bInterfaceSubClass == SC_VIDEOCONTROL && iface_desc->desc.bInterfaceNumber == 0){
 		usb_register_dev(intf, &usbClass);
 	}
-	printk(KERN_ALERT"ELE784 -> probe \n\r");
+*/
+	
 	return 0;
 };
 
 static void pilote_USB_disconnect(struct usb_interface *intf){
+	
+	struct usb_host_interface *iface_desc;
+	iface_desc = intf->cur_altsetting;
 
-	usb_put_dev(device->dev);
-	usb_set_intfdata(intf,NULL);
-	usb_deregister_dev(intf,&usbClass);
-	printk(KERN_ALERT "ELE784 -> disconnect \n\r");
+	if(iface_desc->desc.bInterfaceClass == CC_VIDEO && iface_desc->desc.bInterfaceSubClass == SC_VIDEOSTREAMING && iface_desc->desc.bInterfaceNumber == 1){
+		usb_put_dev(device->dev);
+		kfree(device->myData);
+		kfree(device);
+		usb_set_intfdata(intf,NULL);
+		usb_deregister_dev(intf,&usbClass);
+		printk(KERN_ALERT "ELE784 -> disconnect \n\r");
+	}
+
 };
 
 
@@ -53,8 +68,6 @@ int pilote_USB_open(struct inode *inode, struct file *filp){
 	printk(KERN_ALERT "ELE784 -> open \n\r");
 	
 
-
-	
 	return 0;
 };
 
@@ -115,14 +128,14 @@ long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 
 		for (i = 0; i < nbUrbs; ++i) {
 		  usb_free_urb(myUrb[i]); // Pour être certain
-		  myUrb[i] = usb_alloc_urb(nbPackets,GFP_KERNEL);
+		  myUrb[i] = usb_alloc_urb(nbPackets,GFP_ATOMIC);
 		  if (myUrb[i] == NULL) {
 		    //printk(KERN_WARNING "");		
 		    return -ENOMEM;
 		  }
 
-		  //myUrb[i]->transfer_buffer = usb_buffer_alloc(udev,size,GFP_KERNEL,dma);
-		  myUrb[i]->transfer_buffer = usb_alloc_coherent(udev,size,GFP_KERNEL,dma);
+		  //myUrb[i]->transfer_buffer = usb_buffer_alloc(udev,size,GFP_ATOMIC,dma);
+		  myUrb[i]->transfer_buffer = usb_alloc_coherent(udev,size,GFP_ATOMIC,dma);
 
 		  if (myUrb[i]->transfer_buffer == NULL) {
 		    //printk(KERN_WARNING "");		
@@ -146,7 +159,7 @@ long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 		}
 
 		for(i = 0; i < nbUrbs; i++){
-		  if ((retval = usb_submit_urb(myUrb[i],GFP_KERNEL)) < 0) {
+		  if ((retval = usb_submit_urb(myUrb[i],GFP_ATOMIC)) < 0) {
 		    //printk(KERN_WARNING "");		
 		    return retval;
 		  }
@@ -178,7 +191,7 @@ static void complete_callback(struct urb *urb){
 	if(urb->status == 0){
 
 		for (i = 0; i < urb->number_of_packets; ++i) {
-			if(myStatus == 1){
+			if(device->myStatus == 1){
 				continue;
 			}
 			if (urb->iso_frame_desc[i].status < 0) {
@@ -195,23 +208,23 @@ static void complete_callback(struct urb *urb){
 			}
 
 			len -= data[0];
-			maxlen = myLength - myLengthUsed ;
-			mem = myData + myLengthUsed;
+			maxlen = device->myLength - device->myLengthUsed ;
+			mem = device->myData + device->myLengthUsed;
 			nbytes = min(len, maxlen);
 			memcpy(mem, data + data[0], nbytes);
-			myLengthUsed += nbytes;
+			device->myLengthUsed += nbytes;
 
 			if (len > maxlen) {
-				myStatus = 1; // DONE
+				device->myStatus = 1; // DONE
 			}
 
 			/* Mark the buffer as done if the EOF marker is set. */
-			if ((data[1] & (1 << 1)) && (myLengthUsed != 0)) {
-				myStatus = 1; // DONE
+			if ((data[1] & (1 << 1)) && (device->myLengthUsed != 0)) {
+				device->myStatus = 1; // DONE
 			}
 		}
 
-		if (!(myStatus == 1)){
+		if (!(device->myStatus == 1)){
 			if ((ret = usb_submit_urb(urb, GFP_ATOMIC)) < 0) {
 				//printk(KERN_WARNING "");
 			}

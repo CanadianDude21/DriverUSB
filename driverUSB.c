@@ -19,8 +19,9 @@ int pilote_USB_probe(struct usb_interface *intf, const struct usb_device_id *id)
 	int retval;
 	struct usb_host_interface *iface_desc;
 	struct usb_device *dev = interface_to_usbdev(intf);
+	init_waitqueue_head(&(device->waitRead));
 
-	device = kmalloc(sizeof(USBperso),GFP_KERNEL);
+	device = kmalloc(sizeof(USBperso),GFP_ATOMIC);
 	device->dev = usb_get_dev(dev);
 	device->intf = intf;
 	iface_desc = intf->cur_altsetting;
@@ -47,19 +48,21 @@ static void pilote_USB_disconnect(struct usb_interface *intf){
 
 int pilote_USB_open(struct inode *inode, struct file *filp){
 	
-
-
 	filp->private_data = device;
 	printk(KERN_ALERT "ELE784 -> open \n\r");
-	
-
-
 	
 	return 0;
 };
 
 ssize_t pilote_USB_read(struct file *filp, char *buff, size_t count, loff_t *f_pos){
+
+	struct USBperso *device = (USBperso*)filp->private_data;
+
+	wait_for_completion(wait_read);
+
 	printk(KERN_ALERT "ELE784 -> read \n\r");
+
+
 	return 0;
 };
 
@@ -72,9 +75,10 @@ long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 	dma_addr_t *dma;
 	struct urb** myUrb;
 	struct usb_endpoint_descriptor endpointDesc;
-	struct usb_host_interface *cur_altsetting;	
-	struct usb_interface *interface = filp->private_data;
- 	struct usb_device *udev = interface_to_usbdev(interface);
+	struct usb_host_interface *cur_altsetting;
+	struct USBperso *device = (USBperso*)filp->private_data;
+	struct usb_interface *interface = device->intf;
+ 	struct usb_device *udev = device->dev;
 	
 	
 	switch(cmd){
@@ -115,14 +119,14 @@ long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 
 		for (i = 0; i < nbUrbs; ++i) {
 		  usb_free_urb(myUrb[i]); // Pour être certain
-		  myUrb[i] = usb_alloc_urb(nbPackets,GFP_KERNEL);
+		  myUrb[i] = usb_alloc_urb(nbPackets,GFP_ATOMIC);
 		  if (myUrb[i] == NULL) {
 		    //printk(KERN_WARNING "");		
 		    return -ENOMEM;
 		  }
 
 		  //myUrb[i]->transfer_buffer = usb_buffer_alloc(udev,size,GFP_KERNEL,dma);
-		  myUrb[i]->transfer_buffer = usb_alloc_coherent(udev,size,GFP_KERNEL,dma);
+		  myUrb[i]->transfer_buffer = usb_alloc_coherent(udev,size,GFP_ATOMIC,myUrb[i]->transfer_dma);
 
 		  if (myUrb[i]->transfer_buffer == NULL) {
 		    //printk(KERN_WARNING "");		
@@ -146,7 +150,7 @@ long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 		}
 
 		for(i = 0; i < nbUrbs; i++){
-		  if ((retval = usb_submit_urb(myUrb[i],GFP_KERNEL)) < 0) {
+		  if ((retval = usb_submit_urb(myUrb[i],GFP_ATOMIC)) < 0) {
 		    //printk(KERN_WARNING "");		
 		    return retval;
 		  }
@@ -175,7 +179,7 @@ static void complete_callback(struct urb *urb){
 	unsigned int nbytes;
 	void * mem;
 
-	if(urb->status == 0){
+	/*if(urb->status == 0){
 
 		for (i = 0; i < urb->number_of_packets; ++i) {
 			if(myStatus == 1){
@@ -204,9 +208,9 @@ static void complete_callback(struct urb *urb){
 			if (len > maxlen) {
 				myStatus = 1; // DONE
 			}
-
+*/
 			/* Mark the buffer as done if the EOF marker is set. */
-			if ((data[1] & (1 << 1)) && (myLengthUsed != 0)) {
+			/*if ((data[1] & (1 << 1)) && (myLengthUsed != 0)) {
 				myStatus = 1; // DONE
 			}
 		}
@@ -216,13 +220,14 @@ static void complete_callback(struct urb *urb){
 				//printk(KERN_WARNING "");
 			}
 		}else{
+			complete(&wait_read);
 			///////////////////////////////////////////////////////////////////////
 			//  Synchronisation
 			///////////////////////////////////////////////////////////////////////
 		}
 	}else{
 		//printk(KERN_WARNING "");
-	}
+	}*/
 }
 
 

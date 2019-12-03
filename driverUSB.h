@@ -43,6 +43,9 @@
 #define USB_VENDOR_ID	0x046d 
 #define USB_PRODUCT_ID 	0x0994
 
+struct completion wait_read;
+DECLARE_COMPLETION(&wait_read);
+
 typedef struct{
 	struct usb_device* dev;
 	struct usb_interface *intf;
@@ -63,7 +66,7 @@ struct file_operations monModule_fops = {
 };
 
 struct usb_class_driver usbClass = {
-	.name = "Camera %d",
+	.name = "Camera%d",
 	.fops = &monModule_fops,
 	.minor_base = DEV_MINOR
 };

@@ -14,6 +14,7 @@ MODULE_AUTHOR("Mathieu Fournier-Desrochers et Samuel Pesant");
 MODULE_LICENSE("Dual BSD/GPL");
 
 USBperso *device;
+struct urb** myUrb;
 
 int pilote_USB_probe(struct usb_interface *intf, const struct usb_device_id *id){
 	int retval;
@@ -70,14 +71,24 @@ int pilote_USB_open(struct inode *inode, struct file *filp){
 
 ssize_t pilote_USB_read(struct file *filp, char *buff, size_t count, loff_t *f_pos){
 
+	int i, ret;
 	USBperso *device = (USBperso*)filp->private_data;
 
-	wait_for_completion(&wait_read);
+
+	for(i = 0; i<5; i++){
+		wait_for_completion(&wait_read);
+	}
+	ret = (int)copy_to_user(buff,device->myData,count);
+	for(i = 0; i<5; i++){
+		usb_kill_urb(myUrb[i]);
+		usb_free_coherent(device->dev,myUrb[i]->transfer_buffer_length,myUrb[i]->transfer_buffer,myUrb[i]->transfer_dma);
+		usb_free_urb(myUrb[i]);
+	}
 
 	printk(KERN_ALERT "ELE784 -> read \n\r");
 
 
-	return 0;
+	return (count-ret);
 };
 
 long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
@@ -86,8 +97,7 @@ long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 	int myPacketSize, nbUrbs;
 	int i, j;
 	size_t size;
-	//dma_addr_t *dma;
-	struct urb** myUrb;
+
 	struct usb_endpoint_descriptor endpointDesc;
 	struct usb_host_interface *cur_altsetting;
 	USBperso *device = (USBperso*)filp->private_data;
@@ -122,6 +132,8 @@ long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 			
 		break;
 	case IOCTL_GRAB:
+		device->myStatus = 0;
+		device->myLengthUsed = 0;
 		printk(KERN_ALERT"ELE784 -> IOCTL_GRAB (0x50) \n\r");
 		cur_altsetting = interface->cur_altsetting;
 		endpointDesc = cur_altsetting->endpoint[0].desc;

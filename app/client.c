@@ -7,7 +7,7 @@
 #include <linux/ioctl.h>
 
 #include "dht_data.h"
-#include "../module/ioctl_cmds.h"
+#include "ioctlcmd.h"
 
 int main(int argc, char *argv[]) {
 	FILE *foutput;
@@ -28,13 +28,13 @@ int main(int argc, char *argv[]) {
 	if (argc > 1) {
 	  camera_stream = open(argv[1], O_RDONLY);
 	} else {
-	  camera_stream = open("/dev/camera_stream0", O_RDONLY);
+	  camera_stream = open("/dev/camera_stream1", O_RDONLY);
 	}
-	if (argc > 2) {
-	  camera_control = open(argv[2], O_RDONLY);
-	} else {
-	  camera_control = open("/dev/camera_control0", O_RDONLY);
-	}
+//	if (argc > 2) {
+//	  camera_control = open(argv[2], O_RDONLY);
+//	} else {
+//	  camera_control = open("/dev/camera_control0", O_RDONLY);
+//	}
 
 	// Etape #2
 	ret = ioctl(camera_stream, IOCTL_STREAMON);
@@ -42,7 +42,7 @@ printf("IOCTL_STREAMON ret = %d\n", ret);
 	sleep(2);
 
 //	ret = ioctl(camera_control, IOCTL_PANTILT_RESET);
-	ret = ioctl(camera_stream, IOCTL_PANTILT_RESET);
+/*	ret = ioctl(camera_stream, IOCTL_PANTILT_RESET);
 printf("IOCTL_PANTILT_RESET ret = %d\n", ret);
 
 	bytes = 3;
@@ -68,7 +68,7 @@ printf("IOCTL_PANTILT ret = %d\n", ret);
 //		ret = ioctl(camera_control, IOCTL_PANTILT, &bytes);
 		ret = ioctl(camera_stream, IOCTL_PANTILT, &bytes);
 	}
-printf("IOCTL_PANTILT ret = %d\n", ret);
+printf("IOCTL_PANTILT ret = %d\n", ret);*/
 
 //
 //	ret = ioctl(camera, IOCTL_STREAMON);
@@ -100,7 +100,7 @@ printf("IOCTL_STREAMOFF ret = %d\n", ret);
 	fclose(foutput);
 	
 	close(camera_stream);
-	close(camera_control);
+	//close(camera_control);
 //
 	return EXIT_SUCCESS;
 }

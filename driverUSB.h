@@ -72,7 +72,7 @@ struct file_operations monModule_fops = {
 };
 
 struct usb_class_driver usbClass = {
-	.name = "Camera%d",
+	.name = "camera_stream%d",
 	.fops = &monModule_fops,
 	.minor_base = DEV_MINOR
 };

@@ -14,7 +14,7 @@ MODULE_AUTHOR("Mathieu Fournier-Desrochers et Samuel Pesant");
 MODULE_LICENSE("Dual BSD/GPL");
 
 USBperso *device;
-struct urb** myUrb;
+struct urb* myUrb[5];
 
 int pilote_USB_probe(struct usb_interface *intf, const struct usb_device_id *id){
 	int retval = -ENOMEM;
@@ -33,12 +33,11 @@ int pilote_USB_probe(struct usb_interface *intf, const struct usb_device_id *id)
 		usb_set_intfdata(intf,device);
 		usb_register_dev(intf, &usbClass);
 		usb_set_interface(device->dev, iface_desc->desc.bInterfaceNumber, 4);
-		printk(KERN_ALERT"ELE784 -> probe \n\r");
+		printk(KERN_ALERT"ELE784 -> probe %p\n\r",device->dev);
 		retval = 0;
 	}
-
-
 	if(iface_desc->desc.bInterfaceClass == CC_VIDEO && iface_desc->desc.bInterfaceSubClass == SC_VIDEOCONTROL && iface_desc->desc.bInterfaceNumber == 0){	
+		usb_register_dev(intf, &usbClass);
 		retval = 0;
 
 	}
@@ -105,7 +104,7 @@ long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 	USBperso *device = (USBperso*)filp->private_data;
 	struct usb_interface *interface = device->intf;
  	struct usb_device *udev = device->dev;
-	
+ 	printk(KERN_ALERT"ELE784 -> IOCTL %p\n\r",udev);
 	
 	switch(cmd){
 	
@@ -116,7 +115,7 @@ long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 		printk(KERN_ALERT"ELE784 -> IOCTL_SET \n\r");
 		break;
 	case IOCTL_STREAMON:
-		printk(KERN_ALERT"ELE784 -> IOCTL_STREAMON (0x30) \n\r");
+		printk(KERN_ALERT"ELE784 -> IOCTL_STREAMON (0x30) %p\n\r",udev);
 		retval = usb_control_msg(udev,
 					usb_sndctrlpipe(udev, 0x00),
 					0x0B,
@@ -145,9 +144,11 @@ long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 		size = myPacketSize * nbPackets;
 		nbUrbs = 5;
 
+		printk(KERN_ALERT"ELE784 -> IOCTL_GRAB 1 \n\r");
 		for (i = 0; i < nbUrbs; ++i) {
-		  usb_free_urb(myUrb[i]); // Pour être certain
+		//  usb_free_urb(myUrb[i]); // Pour être certain
 		  myUrb[i] = usb_alloc_urb(nbPackets,GFP_ATOMIC);
+		  printk(KERN_ALERT"ELE784 -> IOCTL_GRAB 2 \n\r");
 		  if (myUrb[i] == NULL) {
 		    //printk(KERN_WARNING "");		
 		    return -ENOMEM;
@@ -155,13 +156,13 @@ long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 
 		  //myUrb[i]->transfer_buffer = usb_buffer_alloc(udev,size,GFP_KERNEL,dma);
 		  myUrb[i]->transfer_buffer = usb_alloc_coherent(udev,size,GFP_ATOMIC,&(myUrb[i]->transfer_dma));
-
+		  printk(KERN_ALERT"ELE784 -> IOCTL_GRAB 3 \n\r");
 		  if (myUrb[i]->transfer_buffer == NULL) {
 		    //printk(KERN_WARNING "");		
 		    usb_free_urb(myUrb[i]);
 		    return -ENOMEM;
 		  }
-
+		  printk(KERN_ALERT"ELE784 -> IOCTL_GRAB 4 \n\r");
 		  myUrb[i]->dev = udev;
 		  myUrb[i]->context = udev;
 		  myUrb[i]->pipe = usb_rcvisocpipe(udev, endpointDesc.bEndpointAddress);
@@ -170,7 +171,7 @@ long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 		  myUrb[i]->complete = complete_callback;
 		  myUrb[i]->number_of_packets = nbPackets;
 		  myUrb[i]->transfer_buffer_length = size;
-
+		  printk(KERN_ALERT"ELE784 -> IOCTL_GRAB 5 \n\r");
 		  for (j = 0; j < nbPackets; ++j) {
 		    myUrb[i]->iso_frame_desc[j].offset = j * myPacketSize;
 		    myUrb[i]->iso_frame_desc[j].length = myPacketSize;

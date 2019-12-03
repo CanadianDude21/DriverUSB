@@ -43,12 +43,18 @@
 #define USB_VENDOR_ID	0x046d 
 #define USB_PRODUCT_ID 	0x0994
 
+#define LENGTH 42666
+
 struct completion wait_read;
-DECLARE_COMPLETION(&wait_read);
+DECLARE_COMPLETION(wait_read);
 
 typedef struct{
 	struct usb_device* dev;
 	struct usb_interface *intf;
+	unsigned int myStatus;
+	unsigned int myLength;
+	unsigned int myLengthUsed;
+	char *myData;
 }USBperso;
 
 int pilote_USB_probe(struct usb_interface *intf, const struct usb_device_id *id);

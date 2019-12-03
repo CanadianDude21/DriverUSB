@@ -17,7 +17,7 @@ USBperso *device;
 struct urb** myUrb;
 
 int pilote_USB_probe(struct usb_interface *intf, const struct usb_device_id *id){
-	int retval;
+	int retval = -ENOMEM;
 	struct usb_host_interface *iface_desc;
 	struct usb_device *dev = interface_to_usbdev(intf);
 	iface_desc = intf->cur_altsetting;
@@ -32,30 +32,32 @@ int pilote_USB_probe(struct usb_interface *intf, const struct usb_device_id *id)
 		device->intf = intf;
 		usb_set_intfdata(intf,device);
 		usb_register_dev(intf, &usbClass);
-		retval = usb_set_interface(device->dev, iface_desc->desc.bInterfaceNumber, 4);
+		usb_set_interface(device->dev, iface_desc->desc.bInterfaceNumber, 4);
 		printk(KERN_ALERT"ELE784 -> probe \n\r");
+		retval = 0;
 	}
-/*
-	if(iface_desc->desc.bInterfaceClass == CC_VIDEO && iface_desc->desc.bInterfaceSubClass == SC_VIDEOCONTROL && iface_desc->desc.bInterfaceNumber == 0){
-		usb_register_dev(intf, &usbClass);
+
+
+	if(iface_desc->desc.bInterfaceClass == CC_VIDEO && iface_desc->desc.bInterfaceSubClass == SC_VIDEOCONTROL && iface_desc->desc.bInterfaceNumber == 0){	
+		retval = 0;
+
 	}
-*/
-	
-	return 0;
+
+	return retval ;
 };
 
 static void pilote_USB_disconnect(struct usb_interface *intf){
 	
 	struct usb_host_interface *iface_desc;
 	iface_desc = intf->cur_altsetting;
-
 	if(iface_desc->desc.bInterfaceClass == CC_VIDEO && iface_desc->desc.bInterfaceSubClass == SC_VIDEOSTREAMING && iface_desc->desc.bInterfaceNumber == 1){
+		printk(KERN_ALERT "ELE784 -> disconnect \n\r");
 		usb_put_dev(device->dev);
 		kfree(device->myData);
 		kfree(device);
 		usb_set_intfdata(intf,NULL);
 		usb_deregister_dev(intf,&usbClass);
-		printk(KERN_ALERT "ELE784 -> disconnect \n\r");
+		
 	}
 
 };

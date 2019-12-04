@@ -3,7 +3,7 @@
  Nom         : ioctlcmd.h
  Author      : Samuel Pesant et Mathieu Fournier-Desrochers
  Date 	     : 22-10-2019
- Description : Prototypes de fonctions du pilote série
+ Description : numéro des commandes ioctl 
  ============================================================================
  */
 

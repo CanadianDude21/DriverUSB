@@ -48,6 +48,7 @@
 struct completion wait_read;
 DECLARE_COMPLETION(wait_read);
 
+// structure personnel qui contient les informations utilent pour video streaming
 typedef struct{
 	struct usb_device* dev;
 	struct usb_interface *intf;
@@ -57,6 +58,7 @@ typedef struct{
 	char *myData;
 }USBperso;
 
+// prototype de fonctions
 int pilote_USB_probe(struct usb_interface *intf, const struct usb_device_id *id);
 static void pilote_USB_disconnect(struct usb_interface *intf);
 int pilote_USB_open(struct inode *inode,struct file *filp);
@@ -64,6 +66,7 @@ ssize_t pilote_USB_read(struct file *filp, char *buff, size_t count, loff_t *f_p
 long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 static void complete_callback(struct urb *urb);
 
+// structure file ops
 struct file_operations monModule_fops = {
 	.owner   = THIS_MODULE,
 	.open    = pilote_USB_open,
@@ -71,18 +74,20 @@ struct file_operations monModule_fops = {
 	.unlocked_ioctl   = pilote_USB_ioctl
 };
 
+// structure usb class
 struct usb_class_driver usbClass = {
 	.name = "camera_stream%d",
 	.fops = &monModule_fops,
 	.minor_base = DEV_MINOR
 };
 
+// structure usb device id vendor id et product id
 struct usb_device_id MyIdTable[]={
 	{USB_DEVICE(USB_VENDOR_ID,USB_PRODUCT_ID)},
 	{}
 };
 
-
+// structure usb driver
 struct usb_driver myUSBdriver ={
 	.name = "myUSBdriver",
 	.probe = pilote_USB_probe,

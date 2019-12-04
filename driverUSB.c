@@ -3,7 +3,7 @@
  Nom         : driverUSB.c
  Author      : Samuel Pesant et Mathieu Fournier-Desrochers
  Date 	     : 22-10-2019
- Description : Fonctions du pilote série
+ Description : Fonctions du pilote usb pour caméra 
  ============================================================================
  */
 
@@ -13,76 +13,118 @@
 MODULE_AUTHOR("Mathieu Fournier-Desrochers et Samuel Pesant");
 MODULE_LICENSE("Dual BSD/GPL");
 
-USBperso *device;
-struct urb* myUrb[5];
+USBperso *device; //déclaration de la structure perso
+struct urb* myUrb[5]; //déclaration des 5 urb
 
+/* Description: Fonction probe du pilote 
+ *
+ * Arguments  : usb interface qui fait appel à probe
+ *		ID usb_device_id
+ *
+ * Return     : Code d'erreur ou 0 pour réussite
+ */
 int pilote_USB_probe(struct usb_interface *intf, const struct usb_device_id *id){
 	int retval = -ENOMEM;
+	//obtention de l'interface et du usb device
 	struct usb_host_interface *iface_desc;
 	struct usb_device *dev = interface_to_usbdev(intf);
 	iface_desc = intf->cur_altsetting;
-
+	//l'interface qui nous intéresse est le video streaming. 
 	if(iface_desc->desc.bInterfaceClass == CC_VIDEO && iface_desc->desc.bInterfaceSubClass == SC_VIDEOSTREAMING && iface_desc->desc.bInterfaceNumber == 1){
+		//initialisation des champs de la structure perso 
 		device = kmalloc(sizeof(USBperso),GFP_ATOMIC);
 		device->myStatus = 0;
 		device->myLength = LENGTH;
 		device->myLengthUsed = 0;
 		device->myData = kmalloc(sizeof(char)*device->myLength,GFP_ATOMIC);
-		device->dev = usb_get_dev(dev);
-		device->intf = intf;
-		usb_set_intfdata(intf,device);
-		usb_register_dev(intf, &usbClass);
-		usb_set_interface(device->dev, iface_desc->desc.bInterfaceNumber, 4);
-		printk(KERN_ALERT"ELE784 -> probe %p\n\r",device->dev);
-		retval = 0;
+		device->dev = usb_get_dev(dev); // copy de la usb device
+		device->intf = intf; // copy de l'interface actuel
+		usb_set_intfdata(intf,device); // place la structure de donnée dans l'interface
+		usb_register_dev(intf, &usbClass); // s'enregistre pour l'interface à USB
+		usb_set_interface(device->dev, iface_desc->desc.bInterfaceNumber, 4); // set l'interface
+		printk(KERN_ALERT"ELE784 -> probe \n\r";
+		retval = 0; //retourne succèes
 	}
+	//pour video controle on ne fait rien de spécial
 	if(iface_desc->desc.bInterfaceClass == CC_VIDEO && iface_desc->desc.bInterfaceSubClass == SC_VIDEOCONTROL && iface_desc->desc.bInterfaceNumber == 0){	
 		usb_register_dev(intf, &usbClass);
-		retval = 0;
-
+		retval = 0; //retourne succèes
 	}
+
+	
 
 	return retval ;
 };
+ //************************************************************************************************************		       
 
+/* Description: Fonction disconnect du pilote 
+ *
+ * Arguments  : usb interface qui fait appel à disconnect
+ *		
+ *
+ * Return     : void
+ */
 static void pilote_USB_disconnect(struct usb_interface *intf){
 	
 	struct usb_host_interface *iface_desc;
 	iface_desc = intf->cur_altsetting;
+	// vérifie qu'il s'agit de video streaming pour libérer l'espace de ma structure
 	if(iface_desc->desc.bInterfaceClass == CC_VIDEO && iface_desc->desc.bInterfaceSubClass == SC_VIDEOSTREAMING && iface_desc->desc.bInterfaceNumber == 1){
 		printk(KERN_ALERT "ELE784 -> disconnect \n\r");
 		usb_put_dev(device->dev);
 		kfree(device->myData);
 		kfree(device);
 		usb_set_intfdata(intf,NULL);
-		usb_deregister_dev(intf,&usbClass);
+		usb_deregister_dev(intf,&usbClass); // on se retire 
 		
 	}
-
+	else 
+	{
+		usb_register_dev(intf, &usbClass); // AJOUTER PEUT ELENVER LE ELSE SI SA FONCTIONNE PAS
+	}
 };
+ //************************************************************************************************************
 
-
+		       
+/* Description: Fonction d'ouverture du pilote 
+ *
+ * Arguments  : structure inode
+ *		structure file 
+ *
+ * Return     : void
+ */		       
 int pilote_USB_open(struct inode *inode, struct file *filp){
-	
+	// on place notre structure de donnée dans private data
 	filp->private_data = device;
 	printk(KERN_ALERT "ELE784 -> open \n\r");
-
+	// aucune vérification n'est demandé dans l'énoncé du lab.
 	return 0;
 };
+//************************************************************************************************************
+		       
 
+/* Description: Fonction read qui permet la lecture d'un image 
+ *
+ * Arguments  : le buffer de destination
+ *		le nombre de donné a copier
+ *		structure file 
+ *		loff_t fpos
+ *
+ * Return     : retourne le nombre de donné manquante
+ */
 ssize_t pilote_USB_read(struct file *filp, char *buff, size_t count, loff_t *f_pos){
 
 	int i, ret;
-	USBperso *device = (USBperso*)filp->private_data;
+	USBperso *device_perso = (USBperso*)filp->private_data; //CHANGER LE NOM POUR PAS QUI CONFONDRE LES 2 AVANT DEVICE MTN device_perso
 
 
 	for(i = 0; i<5; i++){
 		wait_for_completion(&wait_read);
 	}
-	ret = (int)copy_to_user(buff,device->myData,count);
+	ret = (int)copy_to_user(buff,device_perso->myData,count);
 	for(i = 0; i<5; i++){
 		usb_kill_urb(myUrb[i]);
-		usb_free_coherent(device->dev,myUrb[i]->transfer_buffer_length,myUrb[i]->transfer_buffer,myUrb[i]->transfer_dma);
+		usb_free_coherent(device_perso->dev,myUrb[i]->transfer_buffer_length,myUrb[i]->transfer_buffer,myUrb[i]->transfer_dma);
 		usb_free_urb(myUrb[i]);
 	}
 
@@ -91,7 +133,16 @@ ssize_t pilote_USB_read(struct file *filp, char *buff, size_t count, loff_t *f_p
 
 	return (count-ret);
 };
-
+//************************************************************************************************************
+		       
+/* Description: Fonction qui contient toute les commande IOCTL
+ *
+ * Arguments  :  structure file 
+ *		la commande
+ *		pointeur sur un argument
+ *
+ * Return     : retourne la valeur selon la commande
+ */		       
 long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 	long retval;
 	uint16_t nbPackets;
@@ -101,9 +152,9 @@ long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 
 	struct usb_endpoint_descriptor endpointDesc;
 	struct usb_host_interface *cur_altsetting;
-	USBperso *device = (USBperso*)filp->private_data;
-	struct usb_interface *interface = device->intf;
- 	struct usb_device *udev = device->dev;
+	USBperso *device_perso = (USBperso*)filp->private_data; //CHANGER LE NOM POUR PAS QUI CONFONDRE LES 2 AVANT DEVICE MTN device_perso
+	struct usb_interface *interface = device_perso->intf;
+ 	struct usb_device *udev = device_perso->dev;
  	printk(KERN_ALERT"ELE784 -> IOCTL %p\n\r",udev);
 	
 	switch(cmd){
@@ -114,8 +165,8 @@ long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 	case IOCTL_SET:
 		printk(KERN_ALERT"ELE784 -> IOCTL_SET \n\r");
 		break;
-	case IOCTL_STREAMON:
-		printk(KERN_ALERT"ELE784 -> IOCTL_STREAMON (0x30) %p\n\r",udev);
+	case IOCTL_STREAMON: // démarrage de l'aquisition d'une image
+		printk(KERN_ALERT"ELE784 -> IOCTL_STREAMON (0x30) \n\r");
 		retval = usb_control_msg(udev,
 					usb_sndctrlpipe(udev, 0x00),
 					0x0B,
@@ -123,7 +174,7 @@ long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 					0x0004, 0x0001,NULL,0x00,0x00);
 			
 		break;
-	case IOCTL_STREAMOFF:
+	case IOCTL_STREAMOFF: // arêter l'aquisition d'une image
 		printk(KERN_ALERT"ELE784 -> IOCTL_STREAMOFF (0x40) \n\r");
 		retval = usb_control_msg(udev,
 					usb_sndctrlpipe(udev, 0),
@@ -132,7 +183,7 @@ long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 					0x00, 0x01,NULL,0,0);
 			
 		break;
-	case IOCTL_GRAB:
+	case IOCTL_GRAB: // permet la création des urbs utilent à l'aquisition d'une image
 		device->myStatus = 0;
 		device->myLengthUsed = 0;
 		printk(KERN_ALERT"ELE784 -> IOCTL_GRAB (0x50) \n\r");
@@ -197,7 +248,14 @@ long pilote_USB_ioctl(struct file *filp, unsigned int cmd, unsigned long arg){
 	printk(KERN_ALERT"ELE784 -> ioctl \n\r");
 	return retval;
 };
-
+//************************************************************************************************************
+		       
+/* Description: fonction appelé par les urb lorsque complété 
+ *
+ * Arguments  :  l'urb en question qui appel la fonction 
+ *
+ * Return     : retourne la valeur selon la commande
+ */		       
 static void complete_callback(struct urb *urb){
 
 	int ret;
@@ -260,6 +318,6 @@ static void complete_callback(struct urb *urb){
 		//printk(KERN_WARNING "");
 	}
 }
-
+//************************************************************************************************************
 
 module_usb_driver(myUSBdriver);

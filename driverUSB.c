@@ -42,7 +42,7 @@ int pilote_USB_probe(struct usb_interface *intf, const struct usb_device_id *id)
 		usb_set_intfdata(intf,device); // place la structure de donnée dans l'interface
 		usb_register_dev(intf, &usbClass); // s'enregistre pour l'interface à USB
 		usb_set_interface(device->dev, iface_desc->desc.bInterfaceNumber, 4); // set l'interface
-		printk(KERN_ALERT"ELE784 -> probe \n\r";
+		printk(KERN_ALERT"ELE784 -> probe \n\r");
 		retval = 0; //retourne succèes
 	}
 	//pour video controle on ne fait rien de spécial
@@ -117,11 +117,13 @@ ssize_t pilote_USB_read(struct file *filp, char *buff, size_t count, loff_t *f_p
 	int i, ret;
 	USBperso *device_perso = (USBperso*)filp->private_data; //CHANGER LE NOM POUR PAS QUI CONFONDRE LES 2 AVANT DEVICE MTN device_perso
 
-
+	//on attend que les 5 urb aient finis
 	for(i = 0; i<5; i++){
 		wait_for_completion(&wait_read);
 	}
+	//on va chercher les données et on les envoie au user
 	ret = (int)copy_to_user(buff,device_perso->myData,count);
+	//on détruit les urbs
 	for(i = 0; i<5; i++){
 		usb_kill_urb(myUrb[i]);
 		usb_free_coherent(device_perso->dev,myUrb[i]->transfer_buffer_length,myUrb[i]->transfer_buffer,myUrb[i]->transfer_dma);
